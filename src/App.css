@@ -53,12 +53,26 @@
     flex-wrap: wrap;
     gap: 10px;
   }
+  .filter-section {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .filter-label { font-size: 0.9rem; }
   .segmented {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
   }
+  .room-filter { width: 100%; }
   .pill { padding: 6px 10px; }
+
+  .image-row img {
+    max-height: 220px;
+    width: 100%;
+    object-fit: cover;
+  }
 
   .todo-list { gap: 12px !important; }
   .todo-card {
@@ -76,9 +90,11 @@
     height: auto;
   }
   .todo-meta { grid-column: 1 / -1; }
+  .todo-title h3 { font-size: 1.05rem; }
   .todo-actions {
     grid-column: 1 / -1;
     justify-content: flex-end;
+    gap: 6px;
   }
   .lightbox-image {
     max-width: 96vw;
