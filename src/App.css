@@ -118,6 +118,9 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 30px rgba(0,0,0,0.28);
 }
+.image-row img.clickable {
+  cursor: zoom-in;
+}
 
 /* Toolbar */
 .toolbar {
@@ -286,7 +289,7 @@
 .todo-card {
   position: relative;
   display: grid;
-  grid-template-columns: auto 180px 1fr auto;
+  grid-template-columns: 4px auto 180px 1fr auto;
   align-items: center;
   gap: 14px;
   border: 1px solid rgba(229, 231, 235, 0.25);
@@ -295,6 +298,10 @@
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   transition: transform 120ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  cursor: grab;
+}
+.todo-card:active {
+  cursor: grabbing;
 }
 .todo-card:hover {
   transform: translateY(-2px);
@@ -329,13 +336,10 @@
   border: 1px solid rgba(255,255,255,0.6);
 }
 .room-accent {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  grid-column: 1 / 2;
+  align-self: stretch;
   width: 4px;
-  border-top-left-radius: 14px;
-  border-bottom-left-radius: 14px;
+  border-radius: 2px;
 }
 .todo-sub {
   display: flex;

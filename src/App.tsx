@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { addDoc, collection, deleteDoc, deleteField, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, deleteField, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from './lib/firebase'
 
 // Shared currency formatter (Serbian dinar)
@@ -61,16 +61,21 @@ function App() {
   const [filter, setFilter] = useState<Filter>('all')
   const [roomFilter, setRoomFilter] = useState<string>('all')
 
+  // Drag-and-drop
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const dragImgRef = useRef<HTMLElement | null>(null)
+
   // Image preview lightbox
   const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null)
 
   // Live Firestore subscription
   useEffect(() => {
-    const q = query(collection(db, 'todos'), orderBy('createdAt', 'desc'))
+    const q = query(collection(db, 'todos'), orderBy('sort', 'asc'))
     const unsub = onSnapshot(q, snap => {
       const items: Todo[] = snap.docs.map(d => {
         const data = d.data() as {
           name?: string
+          title?: string
           room?: string
           model?: string
           price?: number
@@ -80,7 +85,7 @@ function App() {
         }
         return {
           id: d.id,
-          name: data.name ?? '',
+          name: data.name ?? data.title ?? '',
           room: data.room ?? '',
           model: data.model ?? undefined,
           price: typeof data.price === 'number' ? data.price : undefined,
@@ -194,7 +199,7 @@ function App() {
         if (!Number.isNaN(p)) payload.price = p
         if (img) payload.imgUrl = img
         if (lnk) payload.link = lnk
-        await addDoc(collection(db, 'todos'), payload)
+        await addDoc(collection(db, 'todos'), { ...payload, sort: todos.length })
       }
 
       closeModal()
@@ -243,6 +248,55 @@ function App() {
     setModalOpen(false)
   }
 
+  // Drag and drop helpers
+  function onDragStartCard(id: string, e: React.DragEvent) {
+    setDraggingId(id)
+    const el = e.currentTarget as HTMLElement
+    try {
+      const clone = el.cloneNode(true) as HTMLElement
+      clone.style.position = 'absolute'
+      clone.style.top = '-1000px'
+      clone.style.left = '-1000px'
+      clone.style.opacity = '1'
+      clone.style.pointerEvents = 'none'
+      document.body.appendChild(clone)
+      dragImgRef.current = clone
+      e.dataTransfer.setDragImage(clone, Math.min(150, el.clientWidth / 2), 20)
+      e.dataTransfer.effectAllowed = 'move'
+    } catch {
+      /* noop */
+    }
+  }
+  function onDropCard(targetId: string) {
+    if (!draggingId || draggingId === targetId) return
+    const srcIdx = todos.findIndex(t => t.id === draggingId)
+    const dstIdx = todos.findIndex(t => t.id === targetId)
+    if (srcIdx < 0 || dstIdx < 0) return
+    const newList = [...todos]
+    const [moved] = newList.splice(srcIdx, 1)
+    newList.splice(dstIdx, 0, moved)
+    setTodos(newList)
+    const batch = writeBatch(db)
+    newList.forEach((t, idx) => batch.update(doc(db, 'todos', t.id), { sort: idx }))
+    batch.commit().catch(err => console.warn('save order failed', err))
+    if (dragImgRef.current) {
+      try { document.body.removeChild(dragImgRef.current) } catch {
+        /* noop */
+      }
+      dragImgRef.current = null
+    }
+    setDraggingId(null)
+  }
+  function onDragEndCard() {
+    if (dragImgRef.current) {
+      try { document.body.removeChild(dragImgRef.current) } catch {
+        /* noop */
+      }
+      dragImgRef.current = null
+    }
+    setDraggingId(null)
+  }
+
   function openPreview(t: Todo) {
     if (t.imgUrl) setPreview({ src: t.imgUrl, alt: t.name })
   }
@@ -255,8 +309,20 @@ function App() {
       <div className="split">
         <aside className="image-col">
           <div className="image-row">
-            <img src="/img1.png" alt="Dekorativna slika 1" loading="eager" />
-            <img src="/img2.png" alt="Dekorativna slika 2" loading="eager" />
+            <img
+              className="clickable"
+              src="/img1.png"
+              alt="Dekorativna slika 1"
+              loading="eager"
+              onClick={() => setPreview({ src: '/img1.png', alt: 'Dekorativna slika 1' })}
+            />
+            <img
+              className="clickable"
+              src="/img2.png"
+              alt="Dekorativna slika 2"
+              loading="eager"
+              onClick={() => setPreview({ src: '/img2.png', alt: 'Dekorativna slika 2' })}
+            />
           </div>
         </aside>
 
@@ -362,8 +428,18 @@ function App() {
 
           <ul className="todo-list" style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
             {filtered.map(t => (
-              <TodoItem key={t.id} todo={t} onToggle={toggle} onRemove={remove} onEdit={() => openEditModal(t)} onPreview={() => openPreview(t)} />)
-            )}
+              <TodoItem
+                key={t.id}
+                todo={t}
+                onToggle={toggle}
+                onRemove={remove}
+                onEdit={() => openEditModal(t)}
+                onPreview={() => openPreview(t)}
+                onDragStart={(e) => onDragStartCard(t.id, e)}
+                onDrop={() => onDropCard(t.id)}
+                onDragEnd={onDragEndCard}
+              />
+            ))}
           </ul>
 
           {todos.length === 0 && (
@@ -398,16 +474,29 @@ function TodoItem({
   onRemove,
   onEdit,
   onPreview,
+  onDragStart,
+  onDrop,
+  onDragEnd,
 }: {
   todo: Todo
   onToggle: (id: string) => void
   onRemove: (id: string) => void
   onEdit: () => void
   onPreview: () => void
+  onDragStart: (e: React.DragEvent) => void
+  onDrop: () => void
+  onDragEnd: () => void
 }) {
   const roomColor = ROOM_COLORS[todo.room] ?? '#94a3b8'
   return (
-    <li className="todo-card">
+    <li
+      className="todo-card"
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={e => e.preventDefault()}
+      onDrop={e => { e.preventDefault(); onDrop() }}
+      onDragEnd={onDragEnd}
+    >
       <span className="room-accent" style={{ background: roomColor }} />
       <input type="checkbox" checked={todo.completed} onChange={() => onToggle(todo.id)} />
       <img
@@ -415,6 +504,7 @@ function TodoItem({
         src={todo.imgUrl}
         alt={todo.name}
         onClick={onPreview}
+        draggable={false}
         onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/vite.svg' }}
       />
       <div className="todo-meta">
