@@ -7,7 +7,7 @@
 
 /* Page and responsive split layout */
 .page {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 24px;
 }
@@ -22,7 +22,7 @@
 }
 .todo-col {
   margin: 0 auto;
-  max-width: 720px;
+  max-width: 1100px;
   text-align: left;
 }
 
@@ -30,15 +30,59 @@
   .split {
     flex-direction: row;
     align-items: flex-start;
-    gap: 32px;
+    gap: 40px;
   }
-  .image-col,
-  .todo-col {
-    flex: 1;
-    width: 50%;
+  .image-col {
+    flex: 0 0 33%;
   }
   .todo-col {
-    max-width: 720px;
+    flex: 1 1 67%;
+    max-width: none;
+  }
+}
+
+/* Small screens */
+@media (max-width: 640px) {
+  .page {
+    padding: 12px;
+  }
+  .toolbar {
+    justify-content: stretch;
+  }
+  .filters {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .segmented {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+  .pill { padding: 6px 10px; }
+
+  .todo-list { gap: 12px !important; }
+  .todo-card {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+  .todo-card > input[type="checkbox"] {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .todo-media {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: auto;
+  }
+  .todo-meta { grid-column: 1 / -1; }
+  .todo-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+  .lightbox-image {
+    max-width: 96vw;
+    max-height: 80vh;
   }
 }
 
@@ -58,9 +102,262 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 30px rgba(0,0,0,0.28);
 }
+
+/* Toolbar */
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal {
+  width: min(800px, 96vw);
+  background: rgba(2,6,23,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+}
+/* Lightbox for image preview */
+.lightbox-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #0f172a; /* solid backdrop */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.lightbox {
+  position: relative;
+  max-width: 92vw;
+  max-height: 92vh;
+  background: #0f172a; /* solid container */
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+.lightbox-image {
+  display: block;
+  max-width: 90vw;
+  max-height: 85vh;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.24);
+  box-shadow: none;
+}
+.lightbox-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+.modal .form-grid {
+  padding: 16px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+}
+.field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  letter-spacing: 0.02em;
+}
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(255,255,255,0.26);
+  background: rgba(255,255,255,0.04);
+  color: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+.input:hover {
+  background: rgba(255,255,255,0.06);
+}
+.input:focus,
+.input:focus-visible {
+  outline: none;
+  border-color: rgba(99,102,241,0.7);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.28), 0 6px 18px rgba(0,0,0,0.18);
+}
+.input::placeholder {
+  color: rgba(255,255,255,0.55);
+}
+.helper {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+.helper.error {
+  color: #fca5a5;
+}
+
+/* Filters segmented control */
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.segmented {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+}
+.pill {
+  background: transparent !important;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  padding: 6px 12px;
+}
+.pill-active {
+  background: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%) !important;
+  color: #fff;
+}
+.badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  background: rgba(0,0,0,0.25);
+}
+
+/* Todo item card layout */
+.todo-card {
+  display: grid;
+  grid-template-columns: auto 180px 1fr auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid rgba(229, 231, 235, 0.25);
+  border-radius: 14px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  transition: transform 120ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.todo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+  border-color: rgba(99,102,241,0.35);
+}
+.todo-media {
+  width: 180px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.16);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+.todo-media.clickable {
+  cursor: zoom-in;
+}
+.todo-media.clickable:hover {}
+.todo-meta {
+  display: grid;
+  gap: 6px;
+}
+.todo-sub {
+  display: flex;
+  gap: 12px;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+.todo-actions {
+  display: flex;
+  gap: 8px;
+}
+.status-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  background: rgba(34,197,94,0.15);
+  color: #86efac;
+}
+.status-chip.completed {
+  background: rgba(59,130,246,0.15);
+  color: #93c5fd;
+}
+
+.summary {
+  margin-top: 16px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: transparent;
+}
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+.summary-row + .summary-row {
+  border-top: 1px dashed rgba(255,255,255,0.16);
+}
+
 @media (prefers-color-scheme: light) {
   .image-row img {
     border-color: rgba(0, 0, 0, 0.08);
     box-shadow: 0 10px 26px rgba(15,23,42,0.16);
+  }
+  .todo-card {
+    border-color: rgba(0,0,0,0.08);
+    background: rgba(0,0,0,0.02);
+  }
+  .todo-media {
+    border-color: rgba(0,0,0,0.08);
+  }
+  .badge {
+    background: rgba(2,6,23,0.06);
+  }
+  .input {
+    border-color: rgba(0,0,0,0.22);
+    background: rgba(0,0,0,0.02);
+  }
+  .summary {
+    border-color: rgba(0,0,0,0.14);
+  }
+  .modal {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.14);
+  }
+  .modal-header {
+    border-bottom-color: rgba(0,0,0,0.12);
   }
 }

@@ -1,37 +1,78 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import { addDoc, collection, deleteDoc, deleteField, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { db } from './lib/firebase'
+
+// Shared currency formatter (Serbian dinar)
+const RSD = new Intl.NumberFormat('sr-RS', { style: 'currency', currency: 'RSD' })
+const formatRSD = (n: number) => RSD.format(n)
+
+// EUR conversion (1 EUR = 117.17 RSD)
+const EUR_RATE = 117.17
+const EUR = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' })
+const formatEUR = (n: number) => EUR.format(n)
 
 export type Todo = {
   id: string
-  title: string
+  name: string
+  room: string
+  model?: string
+  price?: number
+  imgUrl?: string
+  link?: string
   completed: boolean
 }
 
 type Filter = 'all' | 'active' | 'completed'
 
-const STORAGE_KEY = 'condo.todos'
-
-function useLocalStorageTodos() {
-  const [todos, setTodos] = useState<Todo[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? (JSON.parse(raw) as Todo[]) : []
-    } catch {
-      return []
-    }
-  })
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos))
-  }, [todos])
-
-  return { todos, setTodos }
-}
-
 function App() {
-  const { todos, setTodos } = useLocalStorageTodos()
-  const [input, setInput] = useState('')
+  const [todos, setTodos] = useState<Todo[]>([])
+
+  // New item form state
+  const [name, setName] = useState('')
+  const [room, setRoom] = useState('')
+  const [model, setModel] = useState('')
+  const [price, setPrice] = useState('') // keep as string for input
+  const [imgUrl, setImgUrl] = useState('')
+  const [link, setLink] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+
   const [filter, setFilter] = useState<Filter>('all')
+
+  // Image preview lightbox
+  const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null)
+
+  // Live Firestore subscription
+  useEffect(() => {
+    const q = query(collection(db, 'todos'), orderBy('createdAt', 'desc'))
+    const unsub = onSnapshot(q, snap => {
+      const items: Todo[] = snap.docs.map(d => {
+        const data = d.data() as {
+          name?: string
+          room?: string
+          model?: string
+          price?: number
+          imgUrl?: string
+          link?: string
+          completed?: boolean
+        }
+        return {
+          id: d.id,
+          name: data.name ?? '',
+          room: data.room ?? '',
+          model: data.model ?? undefined,
+          price: typeof data.price === 'number' ? data.price : undefined,
+          imgUrl: data.imgUrl ?? undefined,
+          link: data.link ?? undefined,
+          completed: !!data.completed,
+        }
+      })
+      setTodos(items)
+    })
+    return () => unsub()
+  }, [])
 
   const filtered = useMemo(() => {
     switch (filter) {
@@ -44,44 +85,137 @@ function App() {
     }
   }, [todos, filter])
 
-  function addTodo(title: string) {
-    const trimmed = title.trim()
-    if (!trimmed) return
-    setTodos(prev => [{ id: crypto.randomUUID(), title: trimmed, completed: false }, ...prev])
-    setInput('')
+  const total = todos.length
+  const activeCount = todos.filter(t => !t.completed).length
+  const completedCount = total - activeCount
+
+  const totalValue = useMemo(
+    () => todos.reduce((sum, t) => sum + (typeof t.price === 'number' ? t.price : 0), 0),
+    [todos],
+  )
+  const totalEUR = useMemo(() => totalValue / EUR_RATE, [totalValue])
+
+  const isValidUrl = (u: string) => {
+    try {
+      new URL(u)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  async function handleSubmit() {
+    const n = name.trim()
+    const rm = room.trim()
+    const m = model.trim()
+    const priceText = price.trim()
+    const p = priceText ? Number.parseFloat(priceText) : NaN
+    const img = imgUrl.trim()
+    const lnk = link.trim()
+
+    if (!n) {
+      setError('Name is required.')
+      return
+    }
+    if (!rm) {
+      setError('Please select a room.')
+      return
+    }
+    if (priceText && Number.isNaN(p)) {
+      setError('Price must be a number if provided.')
+      return
+    }
+    if ((img && !isValidUrl(img)) || (lnk && !isValidUrl(lnk))) {
+      setError('Please provide valid URLs for Image URL and Link if provided.')
+      return
+    }
+
+    setError(null)
+    try {
+      if (editId) {
+        const payloadUpdate: Record<string, unknown> = {
+          name: n,
+          room: rm,
+        }
+        payloadUpdate.model = m ? m : deleteField()
+        payloadUpdate.price = priceText ? p : deleteField()
+        payloadUpdate.imgUrl = img ? img : deleteField()
+        payloadUpdate.link = lnk ? lnk : deleteField()
+        await updateDoc(doc(db, 'todos', editId), payloadUpdate)
+      } else {
+        const payload: {
+          name: string
+          room: string
+          completed: boolean
+          createdAt: ReturnType<typeof serverTimestamp>
+          model?: string
+          price?: number
+          imgUrl?: string
+          link?: string
+        } = {
+          name: n,
+          room: rm,
+          completed: false,
+          createdAt: serverTimestamp(),
+        }
+        if (m) payload.model = m
+        if (!Number.isNaN(p)) payload.price = p
+        if (img) payload.imgUrl = img
+        if (lnk) payload.link = lnk
+        await addDoc(collection(db, 'todos'), payload)
+      }
+
+      closeModal()
+    } catch (err) {
+      console.warn('submit failed', err)
+    }
   }
 
   function toggle(id: string) {
-    setTodos(prev => prev.map(t => (t.id === id ? { ...t, completed: !t.completed } : t)))
+    const t = todos.find(t => t.id === id)
+    if (!t) return
+    updateDoc(doc(db, 'todos', id), { completed: !t.completed }).catch(err =>
+      console.warn('toggle failed', err),
+    )
   }
 
   function remove(id: string) {
-    setTodos(prev => prev.filter(t => t.id !== id))
+    deleteDoc(doc(db, 'todos', id)).catch(err => console.warn('remove failed', err))
   }
 
-  function rename(id: string, title: string) {
-    setTodos(prev => prev.map(t => (t.id === id ? { ...t, title } : t)))
+  function openAddModal() {
+    setEditId(null)
+    setName('')
+    setRoom('')
+    setModel('')
+    setPrice('')
+    setImgUrl('')
+    setLink('')
+    setError(null)
+    setModalOpen(true)
   }
 
-  function clearCompleted() {
-    setTodos(prev => prev.filter(t => !t.completed))
+  function openEditModal(t: Todo) {
+    setEditId(t.id)
+    setName(t.name)
+    setRoom(t.room)
+    setModel(t.model ?? '')
+    setPrice(typeof t.price === 'number' ? String(t.price) : '')
+    setImgUrl(t.imgUrl ?? '')
+    setLink(t.link ?? '')
+    setError(null)
+    setModalOpen(true)
   }
 
-  async function loadSample() {
-    try {
-      const res = await fetch('/api/todos')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as { todos: Todo[] }
-      // Merge unique by id
-      setTodos(prev => {
-        const seen = new Set(prev.map(t => t.id))
-        const merged = [...prev]
-        for (const t of data.todos) if (!seen.has(t.id)) merged.push(t)
-        return merged
-      })
-    } catch (e) {
-      console.warn('Failed to load sample todos:', e)
-    }
+  function closeModal() {
+    setModalOpen(false)
+  }
+
+  function openPreview(t: Todo) {
+    if (t.imgUrl) setPreview({ src: t.imgUrl, alt: t.name })
+  }
+  function closePreview() {
+    setPreview(null)
   }
 
   return (
@@ -95,47 +229,125 @@ function App() {
         </aside>
 
         <main className="todo-col">
-          <form
-            onSubmit={e => {
-              e.preventDefault()
-              addTodo(input)
-            }}
-            style={{ display: 'flex', gap: 8, marginBottom: 16 }}
-          >
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="Add a task..."
-              style={{ flex: 1, padding: '10px 12px' }}
-            />
-            <button type="submit">Add</button>
-            <button className="btn-clear" type="button" onClick={loadSample} title="Load serverless sample">
-              Load sample
-            </button>
-          </form>
-
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            {(['all', 'active', 'completed'] as Filter[]).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                style={{ fontWeight: filter === f ? 700 : 400 }}
-              >
-                {f[0].toUpperCase() + f.slice(1)}
-              </button>
-            ))}
-            <div style={{ flex: 1 }} />
-            <button className="btn-clear" onClick={clearCompleted}>Clear completed</button>
+          <div className="toolbar">
+            <button type="button" onClick={openAddModal}>Add item</button>
           </div>
 
-          <ul style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
+          {/* Modal */}
+          {modalOpen && (
+            <div className="modal-backdrop" onClick={closeModal}>
+              <div className="modal" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                  <strong>{editId ? 'Edit item' : 'Add item'}</strong>
+                  <button type="button" className="btn-clear" onClick={closeModal}>Close</button>
+                </div>
+                <form
+                  onSubmit={e => {
+                    e.preventDefault()
+                    handleSubmit()
+                  }}
+                  className="form-grid"
+                >
+                  <div className="field">
+                    <label className="label" htmlFor="name">Name (required)</label>
+                    <input id="name" className="input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Dyson" />
+                  </div>
+                  <div className="field">
+                    <label className="label" htmlFor="room">Room (required)</label>
+                    <select id="room" className="input" value={room} onChange={e => setRoom(e.target.value)}>
+                      <option value="">Select room...</option>
+                      <option>Kichen</option>
+                      <option>Living room</option>
+                      <option>Master bedroom</option>
+                      <option>Strahinja's room</option>
+                      <option>Office</option>
+                      <option>Bathroom 1</option>
+                      <option>Bathroom 2</option>
+                      <option>Hall</option>
+                      <option>Terace</option>
+                      <option>Pantry</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label className="label" htmlFor="model">Model</label>
+                    <input id="model" className="input" value={model} onChange={e => setModel(e.target.value)} placeholder="e.g. V15 Detect" />
+                  </div>
+                  <div className="field">
+                    <label className="label" htmlFor="price">Price</label>
+                    <input id="price" className="input" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 299.99" inputMode="decimal" />
+                  </div>
+                  <div className="field">
+                    <label className="label" htmlFor="img">Image URL</label>
+                    <input id="img" className="input" value={imgUrl} onChange={e => setImgUrl(e.target.value)} placeholder="https://..." />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label className="label" htmlFor="link">Link</label>
+                    <input id="link" className="input" value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gridColumn: '1 / -1' }}>
+                    <button type="submit">{editId ? 'Save changes' : 'Add'}</button>
+                  </div>
+                  {error && (
+                    <div className="helper error" style={{ gridColumn: '1 / -1' }}>{error}</div>
+                  )}
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Image preview lightbox */}
+          {preview && (
+            <div className="lightbox-backdrop" onClick={closePreview}>
+              <div className="lightbox" onClick={e => e.stopPropagation()}>
+                <img className="lightbox-image" src={preview.src} alt={preview.alt} />
+                <button type="button" className="btn-clear lightbox-close" onClick={closePreview}>Close</button>
+              </div>
+            </div>
+          )}
+
+          <div className="filters">
+            <div className="segmented">
+              {(['all', 'active', 'completed'] as Filter[]).map(f => (
+                <button
+                  key={f}
+                  className={`pill ${filter === f ? 'pill-active' : ''}`}
+                  onClick={() => setFilter(f)}
+                >
+                  {f[0].toUpperCase() + f.slice(1)}
+                  <span className="badge">
+                    {f === 'all' ? total : f === 'active' ? activeCount : completedCount}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div style={{ flex: 1 }} />
+          </div>
+
+          <ul className="todo-list" style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
             {filtered.map(t => (
-              <TodoItem key={t.id} todo={t} onToggle={toggle} onRemove={remove} onRename={rename} />)
+              <TodoItem key={t.id} todo={t} onToggle={toggle} onRemove={remove} onEdit={() => openEditModal(t)} onPreview={() => openPreview(t)} />)
             )}
           </ul>
 
           {todos.length === 0 && (
-            <p style={{ opacity: 0.7 }}>No tasks yet. Add one to get started.</p>
+            <p style={{ opacity: 0.7 }}>No items yet. Add one to get started.</p>
+          )}
+
+          {todos.length > 0 && (
+            <div className="summary">
+              <div className="summary-row">
+                <span>Total items</span>
+                <strong>{total}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Total price</span>
+                <strong>{formatRSD(totalValue)}</strong>
+              </div>
+              <div className="summary-row">
+                <span>Total price (EUR)</span>
+                <strong>{formatEUR(totalEUR)}</strong>
+              </div>
+            </div>
           )}
         </main>
       </div>
@@ -147,57 +359,42 @@ function TodoItem({
   todo,
   onToggle,
   onRemove,
-  onRename,
+  onEdit,
+  onPreview,
 }: {
   todo: Todo
   onToggle: (id: string) => void
   onRemove: (id: string) => void
-  onRename: (id: string, title: string) => void
+  onEdit: () => void
+  onPreview: () => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [title, setTitle] = useState(todo.title)
-
   return (
-    <li
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        border: '1px solid #e5e7eb',
-        borderRadius: 8,
-        padding: 10,
-      }}
-    >
+    <li className="todo-card">
       <input type="checkbox" checked={todo.completed} onChange={() => onToggle(todo.id)} />
-      {editing ? (
-        <form
-          onSubmit={e => {
-            e.preventDefault()
-            onRename(todo.id, title.trim() || todo.title)
-            setEditing(false)
-          }}
-          style={{ flex: 1 }}
-        >
-          <input
-            autoFocus
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            onBlur={() => setEditing(false)}
-            style={{ width: '100%', padding: '6px 8px' }}
-          />
-        </form>
-      ) : (
-        <span
-          onDoubleClick={() => setEditing(true)}
-          style={{ flex: 1, textDecoration: todo.completed ? 'line-through' : 'none' }}
-        >
-          {todo.title}
-        </span>
-      )}
-      <button onClick={() => setEditing(v => !v)}>{editing ? 'Save' : 'Edit'}</button>
-      <button onClick={() => onRemove(todo.id)} aria-label={`Delete ${todo.title}`}>
-        Delete
-      </button>
+      <img
+        className="todo-media clickable"
+        src={todo.imgUrl}
+        alt={todo.name}
+        onClick={onPreview}
+        onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/vite.svg' }}
+      />
+      <div className="todo-meta">
+        <h3>{todo.name}</h3>
+        <div className="todo-sub">
+          <span>Room: {todo.room}</span>
+          {todo.model ? <span>Model: {todo.model}</span> : null}
+          {typeof todo.price === 'number' ? <span>Price: {formatRSD(todo.price)}</span> : null}
+        </div>
+        {todo.link ? (
+          <a className="btn-link" href={todo.link} target="_blank" rel="noreferrer noopener">View</a>
+        ) : null}
+      </div>
+      <div className="todo-actions">
+        <button onClick={onEdit}>Edit</button>
+        <button onClick={() => onRemove(todo.id)} aria-label={`Delete ${todo.name}`}>
+          Delete
+        </button>
+      </div>
     </li>
   )
 }
