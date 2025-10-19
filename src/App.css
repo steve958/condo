@@ -226,8 +226,17 @@
 .filters {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-label {
+  opacity: 0.8;
 }
 .segmented {
   display: flex;
@@ -259,13 +268,14 @@
 
 /* Todo item card layout */
 .todo-card {
+  position: relative;
   display: grid;
   grid-template-columns: auto 180px 1fr auto;
   align-items: center;
   gap: 14px;
   border: 1px solid rgba(229, 231, 235, 0.25);
   border-radius: 14px;
-  padding: 14px;
+  padding: 14px 14px 14px 18px;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
   transition: transform 120ms ease, box-shadow 200ms ease, border-color 200ms ease;
@@ -290,6 +300,26 @@
 .todo-meta {
   display: grid;
   gap: 6px;
+}
+.todo-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.room-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.6);
+}
+.room-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
 }
 .todo-sub {
   display: flex;

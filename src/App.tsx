@@ -24,6 +24,25 @@ export type Todo = {
 }
 
 type Filter = 'all' | 'active' | 'completed'
+const filterLabel = (f: Filter) => ({ all: 'Sve', active: 'Planirano', completed: 'Kupljeno' }[f])
+
+const ROOMS = [
+  'Kuhinja', 'Dnevna soba', 'Master spavaća soba', 'Strahinjina soba', 
+  'Radna soba', 'Kupatilo 1', 'Kupatilo 2', 'Hodnik', 'Terasa', 'Ostava'
+]
+
+const ROOM_COLORS: Record<string, string> = {
+  'Kuhinja': '#ef4444',
+  'Dnevna soba': '#f59e0b',
+  'Master spavaća soba': '#8b5cf6',
+  'Strahinjina soba': '#ec4899',
+  'Radna soba': '#10b981',
+  'Kupatilo 1': '#06b6d4',
+  'Kupatilo 2': '#0ea5e9',
+  'Hodnik': '#84cc16',
+  'Terasa': '#22c55e',
+  'Ostava': '#a3a3a3',
+}
 
 function App() {
   const [todos, setTodos] = useState<Todo[]>([])
@@ -40,6 +59,7 @@ function App() {
   const [editId, setEditId] = useState<string | null>(null)
 
   const [filter, setFilter] = useState<Filter>('all')
+  const [roomFilter, setRoomFilter] = useState<string>('all')
 
   // Image preview lightbox
   const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null)
@@ -75,15 +95,27 @@ function App() {
   }, [])
 
   const filtered = useMemo(() => {
+    let result = todos
+    
+    // Filter by completion status
     switch (filter) {
       case 'active':
-        return todos.filter(t => !t.completed)
+        result = result.filter(t => !t.completed)
+        break
       case 'completed':
-        return todos.filter(t => t.completed)
+        result = result.filter(t => t.completed)
+        break
       default:
-        return todos
+        break
     }
-  }, [todos, filter])
+    
+    // Filter by room
+    if (roomFilter !== 'all') {
+      result = result.filter(t => t.room === roomFilter)
+    }
+    
+    return result
+  }, [todos, filter, roomFilter])
 
   const total = todos.length
   const activeCount = todos.filter(t => !t.completed).length
@@ -114,19 +146,19 @@ function App() {
     const lnk = link.trim()
 
     if (!n) {
-      setError('Name is required.')
+      setError('Naziv je obavezan.')
       return
     }
     if (!rm) {
-      setError('Please select a room.')
+      setError('Izaberite prostoriju.')
       return
     }
     if (priceText && Number.isNaN(p)) {
-      setError('Price must be a number if provided.')
+      setError('Cena mora biti broj (ako je navedena).')
       return
     }
     if ((img && !isValidUrl(img)) || (lnk && !isValidUrl(lnk))) {
-      setError('Please provide valid URLs for Image URL and Link if provided.')
+      setError('Unesite ispravne URL-ove za sliku i link (ako su navedeni).')
       return
     }
 
@@ -223,14 +255,14 @@ function App() {
       <div className="split">
         <aside className="image-col">
           <div className="image-row">
-            <img src="/img1.png" alt="Decorative image 1" loading="eager" />
-            <img src="/img2.png" alt="Decorative image 2" loading="eager" />
+            <img src="/img1.png" alt="Dekorativna slika 1" loading="eager" />
+            <img src="/img2.png" alt="Dekorativna slika 2" loading="eager" />
           </div>
         </aside>
 
         <main className="todo-col">
           <div className="toolbar">
-            <button type="button" onClick={openAddModal}>Add item</button>
+            <button type="button" onClick={openAddModal}>Dodaj stavku</button>
           </div>
 
           {/* Modal */}
@@ -238,8 +270,8 @@ function App() {
             <div className="modal-backdrop" onClick={closeModal}>
               <div className="modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                  <strong>{editId ? 'Edit item' : 'Add item'}</strong>
-                  <button type="button" className="btn-clear" onClick={closeModal}>Close</button>
+                  <strong>{editId ? 'Uredi stavku' : 'Dodaj stavku'}</strong>
+                  <button type="button" className="btn-clear" onClick={closeModal}>Zatvori</button>
                 </div>
                 <form
                   onSubmit={e => {
@@ -249,35 +281,26 @@ function App() {
                   className="form-grid"
                 >
                   <div className="field">
-                    <label className="label" htmlFor="name">Name (required)</label>
-                    <input id="name" className="input" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Dyson" />
+                    <label className="label" htmlFor="name">Naziv (obavezno)</label>
+                    <input id="name" className="input" value={name} onChange={e => setName(e.target.value)} placeholder="npr. Dyson" />
                   </div>
                   <div className="field">
-                    <label className="label" htmlFor="room">Room (required)</label>
+                    <label className="label" htmlFor="room">Prostorija (obavezno)</label>
                     <select id="room" className="input" value={room} onChange={e => setRoom(e.target.value)}>
-                      <option value="">Select room...</option>
-                      <option>Kichen</option>
-                      <option>Living room</option>
-                      <option>Master bedroom</option>
-                      <option>Strahinja's room</option>
-                      <option>Office</option>
-                      <option>Bathroom 1</option>
-                      <option>Bathroom 2</option>
-                      <option>Hall</option>
-                      <option>Terace</option>
-                      <option>Pantry</option>
+                      <option value="">Izaberite prostoriju...</option>
+                      {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                   <div className="field">
                     <label className="label" htmlFor="model">Model</label>
-                    <input id="model" className="input" value={model} onChange={e => setModel(e.target.value)} placeholder="e.g. V15 Detect" />
+                    <input id="model" className="input" value={model} onChange={e => setModel(e.target.value)} placeholder="npr. V15 Detect" />
                   </div>
                   <div className="field">
-                    <label className="label" htmlFor="price">Price</label>
-                    <input id="price" className="input" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 299.99" inputMode="decimal" />
+                    <label className="label" htmlFor="price">Cena</label>
+                    <input id="price" className="input" value={price} onChange={e => setPrice(e.target.value)} placeholder="npr. 299.99" inputMode="decimal" />
                   </div>
                   <div className="field">
-                    <label className="label" htmlFor="img">Image URL</label>
+                    <label className="label" htmlFor="img">URL slike</label>
                     <input id="img" className="input" value={imgUrl} onChange={e => setImgUrl(e.target.value)} placeholder="https://..." />
                   </div>
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
@@ -285,7 +308,7 @@ function App() {
                     <input id="link" className="input" value={link} onChange={e => setLink(e.target.value)} placeholder="https://..." />
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gridColumn: '1 / -1' }}>
-                    <button type="submit">{editId ? 'Save changes' : 'Add'}</button>
+                    <button type="submit">{editId ? 'Sačuvaj izmene' : 'Dodaj'}</button>
                   </div>
                   {error && (
                     <div className="helper error" style={{ gridColumn: '1 / -1' }}>{error}</div>
@@ -300,27 +323,41 @@ function App() {
             <div className="lightbox-backdrop" onClick={closePreview}>
               <div className="lightbox" onClick={e => e.stopPropagation()}>
                 <img className="lightbox-image" src={preview.src} alt={preview.alt} />
-                <button type="button" className="btn-clear lightbox-close" onClick={closePreview}>Close</button>
+                <button type="button" className="btn-clear lightbox-close" onClick={closePreview}>Zatvori</button>
               </div>
             </div>
           )}
 
           <div className="filters">
-            <div className="segmented">
-              {(['all', 'active', 'completed'] as Filter[]).map(f => (
-                <button
-                  key={f}
-                  className={`pill ${filter === f ? 'pill-active' : ''}`}
-                  onClick={() => setFilter(f)}
-                >
-                  {f[0].toUpperCase() + f.slice(1)}
-                  <span className="badge">
-                    {f === 'all' ? total : f === 'active' ? activeCount : completedCount}
-                  </span>
-                </button>
-              ))}
+            <div className="filter-section">
+              <label className="filter-label">Status:</label>
+              <div className="segmented">
+                {(['all', 'active', 'completed'] as Filter[]).map(f => (
+                  <button
+                    key={f}
+                    className={`pill ${filter === f ? 'pill-active' : ''}`}
+                    onClick={() => setFilter(f)}
+                  >
+                    {filterLabel(f)}
+                    <span className="badge">
+                      {f === 'all' ? total : f === 'active' ? activeCount : completedCount}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div style={{ flex: 1 }} />
+            
+            <div className="filter-section">
+              <label className="filter-label">Prostorija:</label>
+              <select 
+                className="input room-filter" 
+                value={roomFilter} 
+                onChange={e => setRoomFilter(e.target.value)}
+              >
+                <option value="all">Sve prostorije</option>
+                {ROOMS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
           </div>
 
           <ul className="todo-list" style={{ listStyle: 'none', padding: 0, display: 'grid', gap: 8 }}>
@@ -330,21 +367,21 @@ function App() {
           </ul>
 
           {todos.length === 0 && (
-            <p style={{ opacity: 0.7 }}>No items yet. Add one to get started.</p>
+            <p style={{ opacity: 0.7 }}>Nema stavki. Dodajte prvu da započnete.</p>
           )}
 
           {todos.length > 0 && (
             <div className="summary">
               <div className="summary-row">
-                <span>Total items</span>
+                <span>Ukupno stavki</span>
                 <strong>{total}</strong>
               </div>
               <div className="summary-row">
-                <span>Total price</span>
+                <span>Ukupna cena</span>
                 <strong>{formatRSD(totalValue)}</strong>
               </div>
               <div className="summary-row">
-                <span>Total price (EUR)</span>
+                <span>Ukupna cena (EUR)</span>
                 <strong>{formatEUR(totalEUR)}</strong>
               </div>
             </div>
@@ -368,8 +405,10 @@ function TodoItem({
   onEdit: () => void
   onPreview: () => void
 }) {
+  const roomColor = ROOM_COLORS[todo.room] ?? '#94a3b8'
   return (
     <li className="todo-card">
+      <span className="room-accent" style={{ background: roomColor }} />
       <input type="checkbox" checked={todo.completed} onChange={() => onToggle(todo.id)} />
       <img
         className="todo-media clickable"
@@ -379,20 +418,23 @@ function TodoItem({
         onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/vite.svg' }}
       />
       <div className="todo-meta">
-        <h3>{todo.name}</h3>
+        <div className="todo-title">
+          <span className="room-marker" style={{ background: roomColor }} />
+          <h3>{todo.name}</h3>
+        </div>
         <div className="todo-sub">
-          <span>Room: {todo.room}</span>
+          <span>Prostorija: {todo.room}</span>
           {todo.model ? <span>Model: {todo.model}</span> : null}
-          {typeof todo.price === 'number' ? <span>Price: {formatRSD(todo.price)}</span> : null}
+          {typeof todo.price === 'number' ? <span>Cena: {formatRSD(todo.price)}</span> : null}
         </div>
         {todo.link ? (
-          <a className="btn-link" href={todo.link} target="_blank" rel="noreferrer noopener">View</a>
+          <a className="btn-link" href={todo.link} target="_blank" rel="noreferrer noopener">Otvori</a>
         ) : null}
       </div>
       <div className="todo-actions">
-        <button onClick={onEdit}>Edit</button>
-        <button onClick={() => onRemove(todo.id)} aria-label={`Delete ${todo.name}`}>
-          Delete
+        <button onClick={onEdit}>Uredi</button>
+        <button onClick={() => onRemove(todo.id)} aria-label={`Obriši ${todo.name}`}>
+          Obriši
         </button>
       </div>
     </li>
