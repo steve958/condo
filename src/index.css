@@ -1,0 +1,116 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+
+  /* Gradient tokens (dark as default) */
+  --bg-gradient: radial-gradient(1200px 800px at 10% 0%, rgba(14, 165, 233, 0.25) 0%, rgba(14,165,233,0) 40%),
+                 radial-gradient(1000px 700px at 90% 0%, rgba(168, 85, 247, 0.22) 0%, rgba(168,85,247,0) 45%),
+                 linear-gradient(180deg, #0b1020 0%, #0b1020 100%);
+  --btn-gradient: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
+  --btn-gradient-hover: linear-gradient(135deg, #818cf8 0%, #67e8f9 100%);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg-gradient);
+  background-attachment: fixed;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* Modern gradient buttons */
+button {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 0.65em 1.15em;
+  font-size: 1em;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--btn-gradient);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset,
+              0 6px 20px rgba(99,102,241,0.25);
+  transition: transform 120ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+button:hover {
+  background: var(--btn-gradient-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.1) inset,
+              0 10px 28px rgba(99,102,241,0.35);
+}
+button:active {
+  transform: translateY(0) scale(0.98);
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+  outline-offset: 2px;
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background-image: linear-gradient(90deg, #a78bfa, #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Clear (ghost) button variant */
+.btn-clear {
+  background: transparent !important;
+  color: inherit;
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: none;
+}
+.btn-clear:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.3);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    /* Softer, light theme gradient */
+    --bg-gradient: radial-gradient(1000px 700px at 0% 0%, rgba(99,102,241,0.18) 0%, rgba(99,102,241,0) 40%),
+                   radial-gradient(900px 600px at 100% 0%, rgba(34,211,238,0.18) 0%, rgba(34,211,238,0) 40%),
+                   linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    --btn-gradient: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+    --btn-gradient-hover: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
+  }
+  a:hover {
+    color: #747bff;
+  }
+  .btn-clear {
+    border-color: rgba(17,24,39,0.15);
+  }
+  .btn-clear:hover {
+    background: rgba(2,6,23,0.04);
+    border-color: rgba(17,24,39,0.3);
+  }
+}

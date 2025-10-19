@@ -1,0 +1,66 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* Page and responsive split layout */
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.split {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.image-col,
+.todo-col {
+  width: 100%;
+}
+.todo-col {
+  margin: 0 auto;
+  max-width: 720px;
+  text-align: left;
+}
+
+@media (min-width: 1024px) {
+  .split {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 32px;
+  }
+  .image-col,
+  .todo-col {
+    flex: 1;
+    width: 50%;
+  }
+  .todo-col {
+    max-width: 720px;
+  }
+}
+
+/* Simple responsive column for public images */
+.image-row {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  justify-content: center;
+  align-items: center;
+  margin: 8px 0 24px;
+}
+.image-row img {
+  width: min(100%, 1100px);
+  height: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+}
+@media (prefers-color-scheme: light) {
+  .image-row img {
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 26px rgba(15,23,42,0.16);
+  }
+}
