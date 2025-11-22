@@ -125,8 +125,13 @@
 /* Toolbar */
 .toolbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
+}
+.collection-selector {
+  max-width: 300px;
 }
 
 /* Modal */

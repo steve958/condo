@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow access to the "todos" collection
+    match /todos/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Allow access to the "ema-luka" collection
+    match /ema-luka/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

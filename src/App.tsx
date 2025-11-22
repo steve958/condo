@@ -46,6 +46,7 @@ const ROOM_COLORS: Record<string, string> = {
 
 function App() {
   const [todos, setTodos] = useState<Todo[]>([])
+  const [selectedCollection, setSelectedCollection] = useState<string>('todos')
 
   // New item form state
   const [name, setName] = useState('')
@@ -70,7 +71,7 @@ function App() {
 
   // Live Firestore subscription
   useEffect(() => {
-    const q = query(collection(db, 'todos'), orderBy('sort', 'asc'))
+    const q = query(collection(db, selectedCollection), orderBy('sort', 'asc'))
     const unsub = onSnapshot(q, snap => {
       const items: Todo[] = snap.docs.map(d => {
         const data = d.data() as {
@@ -97,11 +98,11 @@ function App() {
       setTodos(items)
     })
     return () => unsub()
-  }, [])
+  }, [selectedCollection])
 
   const filtered = useMemo(() => {
     let result = todos
-    
+
     // Filter by completion status
     switch (filter) {
       case 'active':
@@ -113,22 +114,22 @@ function App() {
       default:
         break
     }
-    
+
     // Filter by room
     if (roomFilter !== 'all') {
       result = result.filter(t => t.room === roomFilter)
     }
-    
+
     return result
   }, [todos, filter, roomFilter])
 
-  const total = todos.length
-  const activeCount = todos.filter(t => !t.completed).length
+  const total = filtered.length
+  const activeCount = filtered.filter(t => !t.completed).length
   const completedCount = total - activeCount
 
   const totalValue = useMemo(
-    () => todos.reduce((sum, t) => sum + (typeof t.price === 'number' ? t.price : 0), 0),
-    [todos],
+    () => filtered.reduce((sum, t) => sum + (typeof t.price === 'number' ? t.price : 0), 0),
+    [filtered],
   )
   const totalEUR = useMemo(() => totalValue / EUR_RATE, [totalValue])
 
@@ -178,7 +179,7 @@ function App() {
         payloadUpdate.price = priceText ? p : deleteField()
         payloadUpdate.imgUrl = img ? img : deleteField()
         payloadUpdate.link = lnk ? lnk : deleteField()
-        await updateDoc(doc(db, 'todos', editId), payloadUpdate)
+        await updateDoc(doc(db, selectedCollection, editId), payloadUpdate)
       } else {
         const payload: {
           name: string
@@ -199,7 +200,7 @@ function App() {
         if (!Number.isNaN(p)) payload.price = p
         if (img) payload.imgUrl = img
         if (lnk) payload.link = lnk
-        await addDoc(collection(db, 'todos'), { ...payload, sort: todos.length })
+        await addDoc(collection(db, selectedCollection), { ...payload, sort: todos.length })
       }
 
       closeModal()
@@ -211,13 +212,13 @@ function App() {
   function toggle(id: string) {
     const t = todos.find(t => t.id === id)
     if (!t) return
-    updateDoc(doc(db, 'todos', id), { completed: !t.completed }).catch(err =>
+    updateDoc(doc(db, selectedCollection, id), { completed: !t.completed }).catch(err =>
       console.warn('toggle failed', err),
     )
   }
 
   function remove(id: string) {
-    deleteDoc(doc(db, 'todos', id)).catch(err => console.warn('remove failed', err))
+    deleteDoc(doc(db, selectedCollection, id)).catch(err => console.warn('remove failed', err))
   }
 
   function openAddModal() {
@@ -277,7 +278,7 @@ function App() {
     newList.splice(dstIdx, 0, moved)
     setTodos(newList)
     const batch = writeBatch(db)
-    newList.forEach((t, idx) => batch.update(doc(db, 'todos', t.id), { sort: idx }))
+    newList.forEach((t, idx) => batch.update(doc(db, selectedCollection, t.id), { sort: idx }))
     batch.commit().catch(err => console.warn('save order failed', err))
     if (dragImgRef.current) {
       try { document.body.removeChild(dragImgRef.current) } catch {
@@ -311,23 +312,37 @@ function App() {
           <div className="image-row">
             <img
               className="clickable"
-              src="/img1.png"
+              src={selectedCollection === 'ema-luka' ? '/img3.png' : '/img1.png'}
               alt="Dekorativna slika 1"
               loading="eager"
-              onClick={() => setPreview({ src: '/img1.png', alt: 'Dekorativna slika 1' })}
+              onClick={() => setPreview({
+                src: selectedCollection === 'ema-luka' ? '/img3.png' : '/img1.png',
+                alt: 'Dekorativna slika 1'
+              })}
             />
             <img
               className="clickable"
-              src="/img2.png"
+              src={selectedCollection === 'ema-luka' ? '/img4.png' : '/img2.png'}
               alt="Dekorativna slika 2"
               loading="eager"
-              onClick={() => setPreview({ src: '/img2.png', alt: 'Dekorativna slika 2' })}
+              onClick={() => setPreview({
+                src: selectedCollection === 'ema-luka' ? '/img4.png' : '/img2.png',
+                alt: 'Dekorativna slika 2'
+              })}
             />
           </div>
         </aside>
 
         <main className="todo-col">
           <div className="toolbar">
+            <select
+              className="input collection-selector"
+              value={selectedCollection}
+              onChange={e => setSelectedCollection(e.target.value)}
+            >
+              <option value="todos">Strahinjin deda kupio stan</option>
+              <option value="ema-luka">Ema from Dubai, Luka from Telep</option>
+            </select>
             <button type="button" onClick={openAddModal}>Dodaj stavku</button>
           </div>
 
